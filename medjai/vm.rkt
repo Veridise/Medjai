@@ -255,14 +255,14 @@
     (run-instruction p instruction)
     ;(when (equal? (context:context-pc (vm-cntx p)) (memory:rv 0 128))
     ;  (uint256_add-hint-128 p))
-    ;(when (equal? (context:context-pc (vm-cntx p)) (memory:rv 0 87))
-    ;  (math_is_nn-hint-87 p))
-    ;(when (equal? (context:context-pc (vm-cntx p)) (memory:rv 0 95))
-    ;  (math_is_nn-hint-95 p))
-    ;(when (equal? (context:context-pc (vm-cntx p)) (memory:rv 0 49))
-    ;  (math_is_le_felt-hint-49 p))
-    ;(when (equal? (context:context-pc (vm-cntx p)) (memory:rv 0 18))
-    ;  (math_split_felt-hint-18 p))
+    (when (equal? (context:context-pc (vm-cntx p)) (memory:rv 0 87))
+      (math_is_nn-hint-87 p))
+    (when (equal? (context:context-pc (vm-cntx p)) (memory:rv 0 95))
+      (math_is_nn-hint-95 p))
+    (when (equal? (context:context-pc (vm-cntx p)) (memory:rv 0 49))
+      (math_is_le_felt-hint-49 p))
+    (when (equal? (context:context-pc (vm-cntx p)) (memory:rv 0 18))
+      (math_split_felt-hint-18 p))
 )
 
 (define (decode-current-instruction p)
@@ -565,9 +565,21 @@
           dst)]
       [else '(#f #f)])))
 
+(define symint-stack empty)
+(define pop-stack? #f)
+(define (turn-on-pop-stack)
+  (set! pop-stack? #t))
+(define (set-pop-stack s)
+  (set! symint-stack s))
 (define (symint)
-  (define-symbolic* x integer?)
-  x)
+  (cond
+    [(and pop-stack? (not (empty? symint-stack)))
+     (begin0
+       (first symint-stack)
+       (set! symint-stack (rest symint-stack)))]
+    [else
+     (define-symbolic* x integer?)
+     x]))
 
 (define (compute-operands p instruction)
     (tokamak:typed p vm?)
@@ -610,7 +622,7 @@
                  (not (equal? 'assert-eq opcode))
                  (not (equal? 'call opcode))))
       (tokamak:log "Making symbolic for dst")
-      (set! dst (symint)))
+      (set! dst (modulo (symint) (vm-prime p))))
       
     (when (not op0)
       (let* ([op0+res (deduce_op0 p instruction dst op1)]
@@ -621,7 +633,7 @@
     ;; Set op0 to symbolic when it's not infered
     (when (and (not op0) should-update-op0)
       (tokamak:log "Making symbolic for op0")
-      (set! op0 (symint)))
+      (set! op0 (modulo (symint) (vm-prime p))))
     (tokamak:log "op0 is: ~a." op0)
 
     (when (not op1)
@@ -633,7 +645,7 @@
     ;; Set op1 to symbolic when it's not infered
     (when (and (not op1) should-update-op1)
       (tokamak:log "Making symbolic for op1")
-      (set! op1 (symint)))
+      (set! op1 (modulo (symint) (vm-prime p))))
     (tokamak:log "op1 is: ~a." op1)
 
     ; (fixme) res may become not null when you call any deduce methods above

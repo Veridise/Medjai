@@ -5,6 +5,7 @@
     (prefix-in program: "./medjai/program.rkt")
     (prefix-in memory: "./medjai/memory.rkt")
     (prefix-in runner: "./medjai/runner.rkt")
+    (prefix-in vm: "./medjai/vm.rkt")
     rosette/lib/angelic
 )
 
@@ -62,4 +63,28 @@
       (if (empty? (hash-keys mdl-hash))
         (displayln "Any assignment causes a bug")
         (for ([key (hash-keys mdl-hash)])
-          (displayln (~a key " = " (hash-ref mdl-hash key))))))))
+          (displayln (~a key " = " (hash-ref mdl-hash key)))))
+      (displayln "Running again")
+      (vm:turn-on-pop-stack)
+      (vm:set-pop-stack
+        (map (lambda (k) (hash-ref mdl-hash k))
+             (sort (hash-keys mdl-hash)
+                   (lambda (s1 s2)
+                     (< (string->number (substring (~a s1) 2 (string-length (~a s1))))
+                        (string->number (substring (~a s2) 2 (string-length (~a s2)))))))))
+(set! program (program:load-program (hash-ref args 'program)))
+(set! initial-memory (memory:make-memory
+    #:prime (program:program-prime program)))
+(set! runner (runner:make-runner
+    #:prog program #:mem initial-memory))
+(runner:initialize-segments runner)
+(define end (runner:initialize-main-entrypoint runner))
+(tokamak:log "end is: ~a" end)
+(define program-input (let ([pi (hash-ref args 'program-input)])
+    (if (null? pi) (make-hash) pi)
+))
+(runner:initialize-vm
+    runner
+    (make-hash (list (cons 'program-input program-input)))
+)
+      (runner:run-until-pc runner end))))
