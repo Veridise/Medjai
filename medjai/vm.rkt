@@ -253,16 +253,16 @@
     (define instruction (decode-current-instruction p))
     (tokamak:log "instruction is: ~a" instruction)
     (run-instruction p instruction)
-    (when (equal? (context:context-pc (vm-cntx p)) (memory:rv 0 128))
-      (uint256_add-hint-128 p))
-    (when (equal? (context:context-pc (vm-cntx p)) (memory:rv 0 87))
-      (math_is_nn-hint-87 p))
-    (when (equal? (context:context-pc (vm-cntx p)) (memory:rv 0 95))
-      (math_is_nn-hint-95 p))
-    (when (equal? (context:context-pc (vm-cntx p)) (memory:rv 0 49))
-      (math_is_le_felt-hint-49 p))
-    (when (equal? (context:context-pc (vm-cntx p)) (memory:rv 0 18))
-      (math_split_felt-hint-18 p))
+    ;(when (equal? (context:context-pc (vm-cntx p)) (memory:rv 0 128))
+    ;  (uint256_add-hint-128 p))
+    ;(when (equal? (context:context-pc (vm-cntx p)) (memory:rv 0 87))
+    ;  (math_is_nn-hint-87 p))
+    ;(when (equal? (context:context-pc (vm-cntx p)) (memory:rv 0 95))
+    ;  (math_is_nn-hint-95 p))
+    ;(when (equal? (context:context-pc (vm-cntx p)) (memory:rv 0 49))
+    ;  (math_is_le_felt-hint-49 p))
+    ;(when (equal? (context:context-pc (vm-cntx p)) (memory:rv 0 18))
+    ;  (math_split_felt-hint-18 p))
 )
 
 (define (decode-current-instruction p)
@@ -603,12 +603,25 @@
     (define should-update-op0 (not op0))
     (define should-update-op1 (not op1))
 
+    ;; Set dst to symbolic when it's not infered
+    (when (let ([opcode (instruction:instruction-opcode instruction)])
+            (and (not dst)
+                 should-update-dst
+                 (not (equal? 'assert-eq opcode))
+                 (not (equal? 'call opcode))))
+      (tokamak:log "Making symbolic for dst")
+      (set! dst (symint)))
+      
     (when (not op0)
       (let* ([op0+res (deduce_op0 p instruction dst op1)]
              [new-op0 (first op0+res)]
              [new-res (second op0+res)])
         (set! op0 new-op0)
         (when (not res) (set! res new-res))))
+    ;; Set op0 to symbolic when it's not infered
+    (when (and (not op0) should-update-op0)
+      (tokamak:log "Making symbolic for op0")
+      (set! op0 (symint)))
     (tokamak:log "op0 is: ~a." op0)
 
     (when (not op1)
@@ -617,6 +630,10 @@
              [new-res (second op1+res)])
         (set! op1 new-op1)
         (when (not res) (set! res new-res))))
+    ;; Set op1 to symbolic when it's not infered
+    (when (and (not op1) should-update-op1)
+      (tokamak:log "Making symbolic for op1")
+      (set! op1 (symint)))
     (tokamak:log "op1 is: ~a." op1)
 
     ; (fixme) res may become not null when you call any deduce methods above
