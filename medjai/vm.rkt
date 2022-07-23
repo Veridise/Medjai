@@ -300,20 +300,20 @@
                                  (context:context-prime (vm-cntx p))))])
     (cond
       [(equal? opcode 'verify-eq)
-         (tokamak:log "verify equal")
+         (tokamak:log "verify equal: (= ~a ~a)" val (instruction:operands-op1 operands))
          (assert (equal? (instruction:operands-op1 operands) val))
       ]
       [(equal? opcode 'verify-neq)
-         (tokamak:log "verify neq")
+         (tokamak:log "verify neq: (!= ~a ~a)" val (instruction:operands-op1 operands))
          (assert (not (equal? (instruction:operands-op1 operands) val)))
       ]
       [(equal? opcode 'verify-geq)
-         (tokamak:log "verify geq")
-         (assert (>= (instruction:operands-op1 operands) val))
+         (tokamak:log "verify geq: (>= ~a ~a)" val (instruction:operands-op1 operands))
+         (assert (>= val (instruction:operands-op1 operands)))
       ]
       [(equal? opcode 'verify-lt)
-         (tokamak:log "verify lt")
-         (assert (< (instruction:operands-op1 operands) val))
+         (tokamak:log "verify lt: (< ~a ~a)" val (instruction:operands-op1 operands))
+         (assert (< val (instruction:operands-op1 operands)))
       ]
       )))
 
