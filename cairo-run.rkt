@@ -10,23 +10,27 @@
 
 ; parse command line arguments
 (define arg-cname null)
+(define arg-starknet #f)
 (command-line
   #:program "cairo-run.rkt"
   #:once-any
   [("--cname") p-cname "path to a compiled Cairo program (.json)"
-    (begin
-      (set! arg-cname p-cname)
-    )
-  ]
-)
+   (set! arg-cname p-cname)]
+  #:once-any
+  [("--starknet") "Used to indicate compiled file is %lang starknet"
+   (set! arg-starknet #t)])
 (when (null? arg-cname) (tokamak:error "cname should not be null."))
 
 (define args (make-hash (list
     (cons 'program arg-cname)
+    (cons 'starknet arg-starknet)
     (cons 'program-input null)
 )))
 
-(define program (program:load-program (hash-ref args 'program)))
+(define program
+  (program:load-program
+    (hash-ref args 'program)
+    (hash-ref args 'starknet)))
 (define initial-memory (memory:make-memory
     #:prime (program:program-prime program)))
 (tokamak:log "initial memory data is: ~a" (memory:memory-data initial-memory))

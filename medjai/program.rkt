@@ -47,10 +47,13 @@
 
 ; (cairo_runner.load_program) + (Program.load)
 ; adapted from marshmarrow's method restoring a program object from json
-(define (load-program jspath)
+(define (load-program jspath starknet?)
     (tokamak:typed jspath string?)
-    ;; TODO The hash-ref is for starknet
-    (define js0 #|(hash-ref|# (string->jsexpr (file->string jspath)) #|'program|#)
+    (define js0
+      (let ([prog (string->jsexpr (file->string jspath))])
+        (if starknet?
+          (hash-ref prog 'program)
+          prog)))
 
     ; parse data
     (define data0
