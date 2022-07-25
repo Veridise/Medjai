@@ -246,15 +246,16 @@
     ; (fixme) skipped a few
 )
 
-(define (step p)
-    (tokamak:typed p vm?)
-    (tokamak:log "vm step")
-    ; (fixme) hint execution is skipped
-    (define instruction (decode-current-instruction p))
-    (tokamak:log "instruction is: ~a" instruction)
-    (run-instruction p instruction)
-    ;(when (equal? (context:context-pc (vm-cntx p)) (memory:rv 0 128))
-    ;  (uint256_add-hint-128 p))
+(define (step p #:execute-hints [exec-hints? #t])
+  (tokamak:typed p vm?)
+  (tokamak:log "vm step, exec-hints: ~a" exec-hints?)
+  ; (fixme) hint execution is skipped
+  (define instruction (decode-current-instruction p))
+  (tokamak:log "instruction is: ~a" instruction)
+  (run-instruction p instruction)
+  (when exec-hints?
+    (when (equal? (context:context-pc (vm-cntx p)) (memory:rv 0 128))
+      (uint256_add-hint-128 p))
     (when (equal? (context:context-pc (vm-cntx p)) (memory:rv 0 87))
       (math_is_nn-hint-87 p))
     (when (equal? (context:context-pc (vm-cntx p)) (memory:rv 0 95))
@@ -262,8 +263,7 @@
     (when (equal? (context:context-pc (vm-cntx p)) (memory:rv 0 49))
       (math_is_le_felt-hint-49 p))
     (when (equal? (context:context-pc (vm-cntx p)) (memory:rv 0 18))
-      (math_split_felt-hint-18 p))
-)
+      (math_split_felt-hint-18 p))))
 
 (define (decode-current-instruction p)
     (tokamak:typed p vm?)

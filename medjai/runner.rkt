@@ -200,7 +200,7 @@
 )
 
 ; (fixme) skipped a few
-(define (run-until-pc p addr #:run-resources [run-resources null])
+(define (run-until-pc p addr #:run-resources [run-resources null] #:execute-hints [exec-hints #t])
     (tokamak:typed p runner?)
     (tokamak:typed addr memory:rv? integer?)
     ; (fixme) run-resources type unsupported
@@ -215,16 +215,16 @@
                 (tokamak:log "pc is: ~a." (context:context-pc (vm:vm-cntx (runner-vm p))))
                 (tokamak:log "ap is: ~a." (context:context-ap (vm:vm-cntx (runner-vm p))))
                 (tokamak:log "fp is: ~a." (context:context-fp (vm:vm-cntx (runner-vm p))))
-                (vm-step p)
+                (vm-step p #:execute-hints exec-hints)
                 (do-step))))))
 
     ; start the loop
     (do-step)
 )
 
-(define (vm-step p)
+(define (vm-step p #:execute-hints exec-hints)
     (tokamak:typed p runner?)
     (when (memory:rveq (get-pc p) (runner-finalpc p))
         (tokamak:error "execution reached the end of the program."))
-    (vm:step (runner-vm p))
+    (vm:step (runner-vm p) #:execute-hints exec-hints)
 )

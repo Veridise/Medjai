@@ -12,6 +12,7 @@
 ; parse command line arguments
 (define arg-cname null)
 (define arg-starknet #f)
+(define arg-exec-hints #t)
 (command-line
   #:program "cairo-run.rkt"
   #:once-any
@@ -19,37 +20,34 @@
    (set! arg-cname p-cname)]
   #:once-any
   [("--starknet") "Used to indicate compiled file is %lang starknet"
-   (set! arg-starknet #t)])
+   (set! arg-starknet #t)]
+  #:once-any
+  [("--ambivalent") "Used to indicate that Medjai should ignore hints"
+   (set! arg-exec-hints #f)])
 (when (null? arg-cname) (tokamak:error "cname should not be null."))
 
-(define args (make-hash (list
+(define my-args (make-hash (list
     (cons 'program arg-cname)
     (cons 'starknet arg-starknet)
+    (cons 'exec-hints arg-exec-hints)
     (cons 'program-input null)
 )))
 
-(define program
-  (program:load-program
-    (hash-ref args 'program)
-    (hash-ref args 'starknet)))
-(define initial-memory (memory:make-memory
-    #:prime (program:program-prime program)))
-(tokamak:log "initial memory data is: ~a" (memory:memory-data initial-memory))
+(define (run-my-program args)
+  (let* ([program (program:load-program (hash-ref args 'program) (hash-ref args 'starknet))]
+         [initial-memory (memory:make-memory #:prime (program:program-prime program))]
+         [runner (runner:make-runner #:prog program #:mem initial-memory)]
+         [end (begin (runner:initialize-segments runner)
+                     (runner:initialize-main-entrypoint runner))]
+         [program-input (hash-ref args 'program-input)]
+         [program-input (if (null? program-input) (make-hash) program-input)]
+         [exec-hints (hash-ref args 'exec-hints)])
+    (tokamak:log "initial memory data is: ~a" (memory:memory-data initial-memory))
+    (tokamak:log "end is: ~a" end)
+    (runner:initialize-vm runner (make-hash (list (cons 'program-input program-input))))
+    (runner:run-until-pc runner end #:execute-hints exec-hints)))
 
-(define runner (runner:make-runner
-    #:prog program #:mem initial-memory))
-(runner:initialize-segments runner)
-(define end (runner:initialize-main-entrypoint runner))
-(tokamak:log "end is: ~a" end)
-(define program-input (let ([pi (hash-ref args 'program-input)])
-    (if (null? pi) (make-hash) pi)
-))
-(runner:initialize-vm
-    runner
-    (make-hash (list (cons 'program-input program-input)))
-)
-
-(let ([mdl (verify (begin (runner:run-until-pc runner end)
+(let ([mdl (verify (begin (run-my-program my-args)
                           (displayln "Finished Symbolic Execution")
                           (flush-output)))])
   (if (unsat? mdl)
@@ -72,19 +70,4 @@
                    (lambda (s1 s2)
                      (< (string->number (substring (~a s1) 2 (string-length (~a s1))))
                         (string->number (substring (~a s2) 2 (string-length (~a s2)))))))))
-(set! program (program:load-program (hash-ref args 'program)))
-(set! initial-memory (memory:make-memory
-    #:prime (program:program-prime program)))
-(set! runner (runner:make-runner
-    #:prog program #:mem initial-memory))
-(runner:initialize-segments runner)
-(define end (runner:initialize-main-entrypoint runner))
-(tokamak:log "end is: ~a" end)
-(define program-input (let ([pi (hash-ref args 'program-input)])
-    (if (null? pi) (make-hash) pi)
-))
-(runner:initialize-vm
-    runner
-    (make-hash (list (cons 'program-input program-input)))
-)
-      (runner:run-until-pc runner end))))
+      (run-my-program my-args))))
