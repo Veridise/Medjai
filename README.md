@@ -143,3 +143,34 @@ usage: cairo-run.rkt [ <option> ... ]
  Multiple single-letter switches can be combined after
  one `-`. For example, `-h-` is the same as `-h --`.
 ```
+## Verifying MakerDAO Specs
+
+### Downloading Cairo Compiler
+
+Mejai currently expects all Starknet programs to be compiled using a fork of Cairo's compiler which can be found [here](https://github.com/Veridise/pip-cairo-lang). Make sure to install it before proceeding. This dependence is temporary and in the very near future we will not require it. 
+
+### Specs
+
+Example functional specifications for MakerDAO's `Vat` are found in `MCD/contracts/vatspec.cairo`.
+
+### Running Medjai (Example)
+
+The following commands show how you can use Medjai to verify a spec in `vatspec.cairo`.
+
+```bash
+cd MCD/
+./compile-vat.sh
+cd ../
+racket ./cairo-run --starknet --cname vat_noauth_compiled.json --entry move_demo_spec
+```
+
+If everything ran successfully you should see 
+
+```bash
+[tokamak:log] done handling storage
+[tokamak:log] second rvmod
+[tokamak:log] third rvmod, context-pc: #(struct:rv 7 0)
+[tokamak:log] context-pc after: #(struct:rv 7 0)
+Finished Symbolic Execution
+No bugs found!
+```

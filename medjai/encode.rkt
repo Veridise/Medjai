@@ -28,6 +28,9 @@
 
 (define (decode-instruction enc #:imm imm)
     (tokamak:log "decode-instruction | enc: ~a, imm: ~a" enc imm)
+    (when (union? enc)
+      (for ([c (union-contents enc)])
+        (displayln (cdr c))))
     (tokamak:typed enc integer?)
     (tokamak:typed imm integer? null?)
     (let-values ([(flags off0-enc off1-enc off2-enc) (instruction:decode-instruction-values enc)])
@@ -104,7 +107,7 @@
             [(equal? opcode-pat (list 0 1 1)) 'verify-lt]
             [(equal? opcode-pat (list 1 0 1)) 'verify-geq]
             [(equal? opcode-pat (list 1 1 0)) 'verify-eq]
-            [(equal? opcode-pat (list 1 0 1)) 'verify-neq]
+            [(equal? opcode-pat (list 1 1 1)) 'verify-neq]
             [else (tokamak:error "unrecognized opcode-pat")]
         ))
 
