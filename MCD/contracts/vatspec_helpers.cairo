@@ -18,8 +18,25 @@ from starkware.cairo.common.math import (
 
 from contracts.vat import (
     Ilk, # structs
-    _live, _wards, _can, _ilks, _dai, _Line, # storage vars
-    cage, deny, init, hope, nope, file, file_ilk, move# methods
+    # _ghost_ilks_sum,
+    _live, _wards, _can, _ilks, _dai, _Line, _debt, _vice, # storage vars
+    cage, deny, init, hope, nope, file, file_ilk, move, # methods
+)
+
+from contracts.safe_math import (
+    _mul, sub, add, 
+)
+
+from veridise.cairo.verification import (
+    medjai_assume_neq_felt,
+    medjai_assert_eq_felt,
+    medjai_assert_neq_felt,
+    medjai_assert_eq_uint256,
+    medjai_assert_le_uint256,
+    medjai_assert_lt_uint256,
+    medjai_assert_valid_uint256,
+    medjai_make_symbolic_felt,
+    medjai_make_symbolic_uint256,
 )
 
 func ward_not_set{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}() -> (
@@ -100,34 +117,27 @@ func valid_what_ilk(what : felt) -> (res : felt):
 end
 
 func symbolicUint256() -> (res: Uint256):
-    let l = symbolic(felt, 'l')
-    let h = symbolic(felt, 'h')
-    return (res=Uint256(low=l, high=h))
+    let (r) = medjai_make_symbolic_uint256()
+    return (res=r)
 end
 
 func verify_le_uint256{range_check_ptr}(a : Uint256, b : Uint256):
-    let (res) = uint256_le(a, b)
-    verify res = 1
+    medjai_assert_le_uint256(a, b)
     return ()
 end
 
 func verify_lt_uint256{range_check_ptr}(a : Uint256, b : Uint256):
-    let (res) = uint256_lt(a, b)
-    verify res = 1
+    medjai_assert_lt_uint256(a, b)
     return ()
 end
 
-func verify_uint256(a : Uint256):
-    verify a.low >= 0
-    verify a.low < 340282366920938463463374607431768211456 # 2**128
-    verify a.high >= 0
-    verify a.high < 340282366920938463463374607431768211456
+func verify_uint256{range_check_ptr}(a : Uint256):
+    medjai_assert_valid_uint256(a)
     return ()
 end
 
 func verify_eq_uint256{range_check_ptr}(a : Uint256, b : Uint256):
-    let (res) = uint256_eq(a, b)
-    verify res = 1
+    medjai_assert_eq_uint256(a, b)
     return()
 end
 
@@ -171,6 +181,67 @@ func inv_post{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}
     # verify_Uint256(debt)
     # verify_Uint256(vice)
     # verify_Uint256(Line)
+
+    return ()
+end
+
+#func _ghost_ilks_sum_update{
+#    syscall_ptr : felt*,
+#    pedersen_ptr : HashBuiltin*,
+#    range_check_ptr,
+#    bitwise_ptr : BitwiseBuiltin*
+#}(old_val: Ilk, new_val: Ilk):
+#    alloc_locals
+#
+#    let (old_agg) = _ghost_ilks_sum.read()
+#    let (old_val_mul) = _mul(old_val.Art, old_val.rate)
+#    let (new_val_mul) = _mul(new_val.Art, new_val.rate)
+#
+#    # NOTE: sub will assert that old_agg >= old_val_mul
+#    let (sub_res) = sub(old_agg, old_val_mul)
+#    let (new_agg) = add(sub_res, new_val_mul)
+#
+#    _ghost_ilks_sum.write(new_agg)
+#
+#    return ()
+#end
+
+func eq_of_dai_pre{
+    syscall_ptr : felt*,
+    pedersen_ptr : HashBuiltin*,
+    range_check_ptr,
+    bitwise_ptr : BitwiseBuiltin*
+}():
+    alloc_locals
+
+    let (debt) = _debt.read()
+    let (vice) = _vice.read()
+    let ilk_agg : Uint256 = Uint256(0, 0) #_ghost_ilks_sum.read()
+
+    let (sum_res) = add(vice, ilk_agg)
+
+    assert debt = sum_res
+    # TODO
+    #medjai_assert_eq_uint256(ilk_agg, Uint256(0, 0))
+
+    return ()
+end
+
+func eq_of_dai_post{
+    syscall_ptr : felt*,
+    pedersen_ptr : HashBuiltin*,
+    range_check_ptr,
+    bitwise_ptr : BitwiseBuiltin*
+}():
+    alloc_locals
+
+    let (debt) = _debt.read()
+    let (vice) = _vice.read()
+    let ilk_agg : Uint256 = Uint256(0, 0) #_ghost_ilks_sum.read()
+
+    let (sum_res) = add(vice, ilk_agg)
+
+    verify debt = sum_res
 
     return ()
 end

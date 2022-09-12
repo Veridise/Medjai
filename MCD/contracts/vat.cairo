@@ -72,6 +72,11 @@ end
 func _ilks(i : felt) -> (ilk : Ilk):
 end
 
+# ghost variable representing sum_i{ilks(i).rate * ilks(i).Art}
+#@storage_var
+#func _ghost_ilks_sum() -> (sum : Uint256):
+#end
+
 # mapping (bytes32 => mapping (address => Urn )) public urns;
 @storage_var
 func _urns(i : felt, u : felt) -> (urn : Urn):

@@ -32,6 +32,8 @@ from contracts.assertions import (
 from contracts.vatspec_helpers import (
     inv_pre,
     inv_post,
+    eq_of_dai_pre,
+    eq_of_dai_post,
     file_failure_cond,
     file_ilk_helper,
     valid_what_ilk,
@@ -40,12 +42,23 @@ from contracts.vatspec_helpers import (
     symbolicUint256,
 )
 
+from veridise.cairo.verification import (
+    medjai_assume_neq_felt,
+    medjai_assert_eq_felt,
+    medjai_assert_neq_felt,
+    medjai_assert_eq_uint256,
+    medjai_assert_le_uint256,
+    medjai_make_symbolic_felt,
+    medjai_make_symbolic_uint256,
+    medjai_assume_valid_uint256,
+)
+
 func verify_ilk_eq{range_check_ptr}(a : Ilk, b : Ilk):
-    verify_eq_uint256(a.Art, b.Art)
-    verify_eq_uint256(a.rate, b.rate)
-    verify_eq_uint256(a.spot, b.spot)
-    verify_eq_uint256(a.line, b.line)
-    verify_eq_uint256(a.dust, b.dust)
+    medjai_assert_eq_uint256(a.Art, b.Art)
+    medjai_assert_eq_uint256(a.rate, b.rate)
+    medjai_assert_eq_uint256(a.spot, b.spot)
+    medjai_assert_eq_uint256(a.line, b.line)
+    medjai_assert_eq_uint256(a.dust, b.dust)
     return ()
 end
 
@@ -56,7 +69,7 @@ func cage_spec {
     }():
    cage()
    let (res) = _live.read()
-   verify res = 0
+   medjai_assert_eq_felt(res, 0)
    return ()
 end
 
@@ -66,8 +79,8 @@ func cage_inv_test{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check
     local i
     local u
 
-    i = symbolic(felt, 'sym1')
-    u = symbolic(felt, 'sym2')
+    let (local i) = medjai_make_symbolic_felt()
+    let (local u) = medjai_make_symbolic_felt()
 
     inv_pre(i, u)
     cage()
@@ -88,9 +101,9 @@ end
 func cage_test_revert_sufficient{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     ):
     let (caller) = get_caller_address()
-    _wards.write(caller, 1)
+    _wards.write(caller, 0)
     cage()
-    verify 1 = 0
+    medjai_assert_eq_felt(0, 1)
     return ()
 end
 
@@ -105,12 +118,11 @@ func deny_spec{
     range_check_ptr
 }():
     alloc_locals
-    local usr
 
-    usr = symbolic(felt, 'sym')
+    let (local usr) = medjai_make_symbolic_felt()
     deny(usr)
     let (local after) = _wards.read(usr)
-    verify after = 0
+    medjai_assert_eq_felt(after, 1)
     return ()
 end
 
@@ -123,19 +135,17 @@ func init_spec{
         syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     } (ilk: felt):
     alloc_locals
-    local what
-    local ilk
 
-    what = symbolic(felt, 'sym1')
-    ilk = symbolic(felt, 'sym2')
+    let (local what) = medjai_make_symbolic_felt()
+    let (local ilk) = medjai_make_symbolic_felt()
     let (local ilkBefore : Ilk) = _ilks.read(ilk)
     init(ilk)
     let (local ilkAfter : Ilk) = _ilks.read(ilk)
-    verify_eq_uint256(ilkBefore.Art, ilkAfter.Art)
-    verify_eq_uint256(Uint256(low=10**27, high=0), ilkAfter.rate)
-    verify_eq_uint256(ilkBefore.spot, ilkAfter.spot)
-    verify_eq_uint256(ilkBefore.line, ilkAfter.line)
-    verify_eq_uint256(ilkBefore.dust, ilkAfter.dust)
+    medjai_assert_eq_uint256(ilkBefore.Art, ilkAfter.Art)
+    medjai_assert_eq_uint256(Uint256(low=10**27, high=0), ilkAfter.rate)
+    medjai_assert_eq_uint256(ilkBefore.spot, ilkAfter.spot)
+    medjai_assert_eq_uint256(ilkBefore.line, ilkAfter.line)
+    medjai_assert_eq_uint256(ilkBefore.dust, ilkAfter.dust)
     return ()
 end
 
@@ -150,9 +160,9 @@ func hope_spec{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     local otherTo
     local usr
 
-    otherFrom = symbolic(felt, 'otherFrom')  # TODO: fix symbolic to work with compound lhs expressions
-    otherTo = symbolic(felt, 'otherTo')
-    usr = symbolic(felt, 'usr')
+    let (local otherFrom) = medjai_make_symbolic_felt()  # TODO: fix symbolic to work with compound lhs expressions
+    let (local otherTo) = medjai_make_symbolic_felt()
+    let (local usr) = medjai_make_symbolic_felt()
     let (caller) = get_caller_address()  # symbolic(felt, 'caller')
     assert_not_equal(otherFrom, caller)
     assert_not_equal(otherTo, usr)
@@ -160,8 +170,8 @@ func hope_spec{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     hope(usr)
     let (local canAfter) = _can.read(caller, usr)
     let (local canOtherAfter) = _can.read(otherFrom, otherTo)
-    verify canAfter = 1
-    verify canOtherBefore != canOtherAfter
+    medjai_assert_eq_felt(canAfter, 1)
+    medjai_assert_eq_felt(canOtherBefore, canOtherAfter)
     return ()
 end
 
@@ -176,9 +186,9 @@ func nope_spec{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     local otherTo
     local usr
 
-    otherFrom = symbolic(felt, 'otherFrom')  # TODO: fix symbolic to work with compound lhs expressions
-    otherTo = symbolic(felt, 'otherTo')
-    usr = symbolic(felt, 'usr')
+    let (local otherFrom) = medjai_make_symbolic_felt()  # TODO: fix symbolic to work with compound lhs expressions
+    let (local otherTo) = medjai_make_symbolic_felt()
+    let (local usr) = medjai_make_symbolic_felt()
     let (caller) = get_caller_address()  # symbolic(felt, 'caller')
     assert_not_equal(otherFrom, caller)
     assert_not_equal(otherTo, usr)
@@ -186,8 +196,8 @@ func nope_spec{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
     nope(usr)
     let (local canAfter) = _can.read(caller, usr)
     let (local canOtherAfter) = _can.read(otherFrom, otherTo)
-    verify canAfter = 0
-    verify canOtherBefore = canOtherAfter
+    medjai_assert_eq_felt(canAfter, 0)
+    medjai_assert_eq_felt(canOtherBefore, canOtherAfter)
     return ()
 end
 
@@ -204,23 +214,20 @@ func move_demo_spec{
     local src
     local dst
 
-    src = symbolic(felt, 'sym2')
-    dst = symbolic(felt, 'sym3')
-    assert_not_equal(src, dst)
+    let (local src) = medjai_make_symbolic_felt()
+    let (local dst) = medjai_make_symbolic_felt()
 
     # _dai.write(src, Uint256(low=0, high=340282366920938463463374607431768211455))
     let (local daiSrcBefore : Uint256) = _dai.read(src)
-    uint256_check(daiSrcBefore)  # Assume the value is a valid uint256
+    medjai_assume_valid_uint256(daiSrcBefore)  # Assume the value is a valid uint256
     let (local daiDstBefore : Uint256) = _dai.read(dst)
-    uint256_check(daiDstBefore)  # Assume the value is a valid uint256
+    medjai_assume_valid_uint256(daiDstBefore)  # Assume the value is a valid uint256
 
-    let (local rad : Uint256) = symbolicUint256()  # Checked in move
+    let (local rad : Uint256) = medjai_make_symbolic_uint256()  # Checked in move
     move(src, dst, rad)
 
     let (local daiSrcAfter : Uint256) = _dai.read(src)
-    let (local daiDstAfter : Uint256) = _dai.read(dst)
-    let (res) = uint256_le(daiSrcAfter, daiSrcBefore)
-    verify res = 1
+    medjai_assert_le_uint256(daiSrcAfter, daiSrcBefore)
     return ()
 end
 
@@ -229,16 +236,13 @@ func move_spec{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
 }():
     alloc_locals
-    local other
-    local src
-    local dst
 
-    src = symbolic(felt, 'sym2')
-    dst = symbolic(felt, 'sym3')
-    other = symbolic(felt, 'sym4')
-    assert_not_equal(src, dst)
-    assert_not_equal(src, other)
-    assert_not_equal(dst, other)
+    let (local src) = medjai_make_symbolic_felt()
+    let (local dst) = medjai_make_symbolic_felt()
+    let (local other) = medjai_make_symbolic_felt()
+    medjai_assume_neq_felt(src, dst)
+    medjai_assume_neq_felt(src, other)
+    medjai_assume_neq_felt(dst, other)
 
     let (local daiSrcBefore : Uint256) = _dai.read(src)
     uint256_check(daiSrcBefore)  # Assume the value is a valid uint256
@@ -255,9 +259,9 @@ func move_spec{
     let (local daiOtherAfter : Uint256) = _dai.read(other)
     let (sum : Uint256, _) = uint256_add(daiDstBefore, rad)
     let (diff : Uint256) = uint256_sub(daiSrcBefore, rad)
-    verify_eq_uint256(sum, daiDstAfter)
-    verify_eq_uint256(diff, daiSrcAfter)
-    verify_eq_uint256(daiOtherBefore, daiOtherAfter)
+    medjai_assert_eq_uint256(sum, daiDstAfter)
+    medjai_assert_eq_uint256(diff, daiSrcAfter)
+    medjai_assert_eq_uint256(daiOtherBefore, daiOtherAfter)
     return ()
 end
 
@@ -271,18 +275,36 @@ func move_inv_spec{
     local src
     local dst
 
-    i = symbolic(felt, 'sym1')
-    u = symbolic(felt, 'sym2')
+    let (local i) = medjai_make_symbolic_felt()
+    let (local u) = medjai_make_symbolic_felt()
 
-    src = symbolic(felt, 'sym3')
-    dst = symbolic(felt, 'sym4')
-    let (local rad : Uint256) = symbolicUint256()
+    let (local src) = medjai_make_symbolic_felt()
+    let (local dst) = medjai_make_symbolic_felt()
+    let (local rad : Uint256) = medjai_make_symbolic_uint256()
     uint256_check(rad)
 
     inv_pre(i, u)
     move(src, dst, rad)
     # _dai.write(src, rad)
     inv_post(i, u)
+    return ()
+end
+
+@external
+func move_eq_of_dai_spec {
+        syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
+    }():
+    alloc_locals
+    local src
+    local dst
+ 
+    src = symbolic(felt, 'sym2')
+    dst = symbolic(felt, 'sym3')
+    let (local rad : Uint256) = symbolicUint256() # Checked in move
+
+    eq_of_dai_pre()
+    move(src, dst, rad)
+    eq_of_dai_post()
     return ()
 end
 
@@ -293,7 +315,7 @@ end
 @external
 func file_spec{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     alloc_locals
-    let what = symbolic(felt, 'sym1')
+    let (local what) = medjai_make_symbolic_felt()
     let (local data_before : Uint256) = symbolicUint256()
     file(what, data_before)
     let (local data_after : Uint256) = _Line.read()
@@ -306,17 +328,15 @@ end
 func file_revert_sufficient_spec{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     ):
     alloc_locals
-    local ilk
-    local what
 
-    ilk = symbolic(felt, 'ilk')
-    what = symbolic(felt, 'what')
+    let (local ilk) = medjai_make_symbolic_felt()
+    let (local what) = medjai_make_symbolic_felt()
     let (res) = file_failure_cond(what)
     assert res = 1
     let (local data) = symbolicUint256()
     let (caller) = get_caller_address()
     file(what, data)
-    verify 1 = 0
+    medjai_assert_eq_felt(0, 1)
     return ()
 end
 
@@ -324,11 +344,9 @@ end
 func file_revert_necessary_spec{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}(
     ):
     alloc_locals
-    local ilk
-    local what
 
-    ilk = symbolic(felt, 'ilk')
-    what = symbolic(felt, 'what')
+    let (local ilk) = medjai_make_symbolic_felt()
+    let (local what) = medjai_make_symbolic_felt()
     let (local caller) = get_caller_address()
     let (local data) = symbolicUint256()
     _wards.write(caller, 1)
@@ -345,11 +363,9 @@ end
 @external
 func file_ilk_spec_1{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     alloc_locals
-    local what
-    local ilk
 
-    what = symbolic(felt, 'sym1')
-    ilk = symbolic(felt, 'sym2')
+    let (local what) = medjai_make_symbolic_felt()
+    let (local ilk) = medjai_make_symbolic_felt()
     let (local data : Uint256) = symbolicUint256()
     let (local ilkBefore : Ilk) = _ilks.read(ilk)
     assert what = 'line'
@@ -367,11 +383,9 @@ end
 @external
 func file_ilk_spec_2{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     alloc_locals
-    local what
-    local ilk
 
-    what = symbolic(felt, 'sym1')
-    ilk = symbolic(felt, 'sym2')
+    let (local what) = medjai_make_symbolic_felt()
+    let (local ilk) = medjai_make_symbolic_felt()
     let (local data : Uint256) = symbolicUint256()
     let (local ilkBefore : Ilk) = _ilks.read(ilk)
     assert what = 'spot'
@@ -389,11 +403,9 @@ end
 @external
 func file_ilk_spec_3{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     alloc_locals
-    local what
-    local ilk
 
-    what = symbolic(felt, 'sym1')
-    ilk = symbolic(felt, 'sym2')
+    let (local what) = medjai_make_symbolic_felt()
+    let (local ilk) = medjai_make_symbolic_felt()
     let (local data : Uint256) = symbolicUint256()
     let (local ilkBefore : Ilk) = _ilks.read(ilk)
     assert what = 'dust'
@@ -416,8 +428,8 @@ func file_ilk_revert_suff_spec1{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*
     local ilk
     local what
 
-    ilk = symbolic(felt, 'ilk')
-    what = symbolic(felt, 'what')
+    let (local ilk) = medjai_make_symbolic_felt()
+    let (local what) = medjai_make_symbolic_felt()
     let (local data) = symbolicUint256()
     let (caller) = get_caller_address()
     _wards.write(caller, 0)  # Failure condition
@@ -434,11 +446,9 @@ func file_ilk_revert_suff_spec2{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*
     ):
     # wards = 1, live = 0, what = ('spot' OR 'line' OR 'dust')
     alloc_locals
-    local ilk
-    local what
 
-    ilk = symbolic(felt, 'ilk')
-    what = symbolic(felt, 'what')
+    let (local ilk) = medjai_make_symbolic_felt()
+    let (local what) = medjai_make_symbolic_felt()
     let (local data) = symbolicUint256()
     let (caller) = get_caller_address()
     _wards.write(caller, 1)  # Set wards
@@ -455,11 +465,9 @@ func file_ilk_revert_suff_spec3{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*
     ):
     # wards = 1, live = 1, what != ('spot' OR 'line' OR 'dust')
     alloc_locals
-    local ilk
-    local what
 
-    ilk = symbolic(felt, 'ilk')
-    what = symbolic(felt, 'what')
+    let (local ilk) = medjai_make_symbolic_felt()
+    let (local what) = medjai_make_symbolic_felt()
     let (local data) = symbolicUint256()
     let (caller) = get_caller_address()
     _wards.write(caller, 1)  # Set what
@@ -476,11 +484,9 @@ func file_ilk_revert_necessary_spec{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr
 }():
     alloc_locals
-    local ilk
-    local what
 
-    ilk = symbolic(felt, 'ilk')
-    what = symbolic(felt, 'what')
+    let (local ilk) = medjai_make_symbolic_felt()
+    let (local what) = medjai_make_symbolic_felt()
     let (local data) = symbolicUint256()
     let (caller) = get_caller_address()
     _wards.write(caller, 1)
@@ -504,15 +510,11 @@ func suck_test{
     syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr, bitwise_ptr : BitwiseBuiltin*
 }():
     alloc_locals
-    local otherUsrU
-    local otherUsrV
-    local u
-    local v
 
-    otherUsrU = symbolic(felt, 'sym1')
-    otherUsrV = symbolic(felt, 'sym2')
-    u = symbolic(felt, 'sym3')
-    v = symbolic(felt, 'sym4')
+    let (local otherUsrU) = medjai_make_symbolic_felt()
+    let (local otherUsrV) = medjai_make_symbolic_felt()
+    let (local u) = medjai_make_symbolic_felt()
+    let (local v) = medjai_make_symbolic_felt()
     let (local rad : Uint256) = symbolicUint256()
 
     assert_not_equal(u, otherUsrU)
@@ -550,12 +552,11 @@ end
 @external
 func rely_spec{syscall_ptr : felt*, pedersen_ptr : HashBuiltin*, range_check_ptr}():
     alloc_locals
-    local usr
 
-    usr = symbolic(felt, 'sym1')
+    let (local usr) = medjai_make_symbolic_felt()
     rely(usr)
     let (local after) = _wards.read(usr)
-    verify after = 1
+    medjai_assert_eq_felt(after, 1)
     return ()
 end
 # END RELY SPEC
