@@ -23,7 +23,8 @@
   - Add path to `parse` to `PATH` variable
 - Cairo Compiler: [https://github.com/Veridise/pip-cairo-lang](https://github.com/Veridise/pip-cairo-lang)
   - We use a custom Cairo/Starknet compiler. Instructions to install are in the repo's README.
-
+- Symexec library: [https://github.com/Veridise/lib-symexec](https://github.com/Veridise/lib-symexec)
+  - Installation instructions in the README of repo.
 ## Quickstart: Running An ERC20 Demo (Docker)
 
 First you need to build the demo from the latest version. Make sure you have Docker installed, and then type in the following command to build an image:
@@ -171,6 +172,27 @@ To use Medjai to check the specification we just need to do the following
 
 ```commandline
 racket ./cairo-run.rkt --starknet --cname vat_compiled.json --entry move_demo_spec
+```
+
+If everything goes correctly you should see a bug:
+
+```commandline
+[tokamak:log] Bugs found with following variable assignments
+[tokamak:log] x$1 = 10
+[tokamak:log] x$4 = 3618502788666131213697322783095070105282824848410658236509717448704103809024
+[tokamak:log] x$0 = 10
+[tokamak:log] x$2 = 0
+[tokamak:log] x$3 = 340282366920938463463374607431768211454
+[tokamak:log] x$8 = 3618502788666131213697322783095070105623107215331596699973092056135872020480
+[tokamak:log] x$5 = 340282366920938463463374607431768211458
+[tokamak:log] x$6 = 340282366920938463463374607431768211457
+[tokamak:log] x$7 = 340282366920938463463374607431768211452
+[tokamak:log] Running again
+[assert] failed
+  context...:
+   /Users/shankarapailoor/Library/Racket/8.5/pkgs/rosette/rosette/base/core/exn.rkt:59:11: raise-exn:fail:svm:assert:user
+   /Users/shankarapailoor/Library/Racket/8.5/pkgs/rosette/rosette/base/form/control.rkt:16:25
+   body of "/Users/shankarapailoor/Medjai/cairo-run.rkt"
 ```
 
 ## Property Specification
