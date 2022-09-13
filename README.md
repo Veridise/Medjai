@@ -9,7 +9,7 @@
 - [x] [Dev] **Program Exploration**: Medjai can execute Cairo program with symbolic inputs and explore all its possible program states.
 - [x] [Dev] **Property Verification**: Medjai can check whether certain properties hold on Cairo program.
 - [ ] [Dev] **Attack Synthesis**: Medjai can automatically solve for concrete inputs that crash given Cairo program.
-- [x] [Dev] **Integrations with <img src="./docs/veridise-icon.png" width=24px> Veridise Product Lines**: Medjai integrates with [[V] specication language](https://github.com/Veridise/V) that allows developers to express correctness properties.
+- [ ] [Dev] **Integrations with <img src="./docs/veridise-icon.png" width=24px> Veridise Product Lines**: Medjai integrates with [[V] specication language](https://github.com/Veridise/V) that allows developers to express correctness properties.
 
 ## Setup and Build
 
